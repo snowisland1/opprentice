@@ -1,5 +1,9 @@
+#!/usr/bin/python
+
 import numpy as np
 from statsmodels import robust
+from statsmodels.tsa.seasonal import seasonal_decompose
+from numpy.linalg import svd
 
 def MAD(a):
     """ calculate the Median Absolute Deviation """
@@ -19,3 +23,6 @@ def EWMA(x, N):
     pass
 
 
+def TSD(x):
+    result = seasonal_decompose(x, model='additive', freq=1440)
+    return result.trend, result.seasonal, result.resid
