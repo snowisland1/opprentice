@@ -7,6 +7,8 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from numpy.linalg import svd
 import pandas
 
+from sklearn.ensemble import GradientBoostingClassifier
+
 ALGORITHMS = [
 "median_absolute_deviation",
 "z_score",
@@ -141,14 +143,31 @@ def main():
     print t
     begin = 0
     end = begin + 10
+# data
+    X = []
+# label
+    Y = []
     while end < len(t):
         s = t[begin:end]
         #print median_absolute_deviation(s)
         #print histogram_bins(s)
         ensemble = [globals()[algorithm](s) for algorithm in ALGORITHMS]
+        X.append(ensemble)
+        Y.append(np.random.randint(0,2))
         print ensemble
         begin += 1
         end += 1
+
+    base_model = GradientBoostingClassifier()
+    #base_model = lgb.LGBMClassifier(objective='binary',
+    #                         boosting_type='gbdt',
+    #                         num_leaves=28,
+    #                         learning_rate=0.05,
+    #                         bagging_fraction=0.8,
+    #                         bagging_freq=5,
+    #                         n_estimators=30,
+    #                         nthread=5)
+    base_model.fit(X, Y)
 
 main()
 
