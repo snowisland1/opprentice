@@ -7,6 +7,16 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from numpy.linalg import svd
 import pandas
 
+ALGORITHMS = [
+"median_absolute_deviation",
+"z_score",
+"grubbs",
+"stddev_from_average",
+"stddev_from_ewma",
+"mean_subtraction_cumulation",
+"histogram_bins",
+]
+
 def MAD(a):
     """ calculate the Median Absolute Deviation """
     return robust.mad(a, c = 1.0)
@@ -79,6 +89,45 @@ def grubbs(x):
 
     return grubbs_score
 
+def stddev_from_average(x):
+    """ (the average of the three datapoints) - (moving average) / (stddev) """
+    series = pandas.Series(x)
+    mean = series.mean()
+    stdDev = series.std()
+    t = tail_avg(x)
+
+    return abs(t - mean) / stdDev
+
+def stddev_from_ewma(x):
+    series = pandas.Series(x)
+    expAverage = pandas.stats.moments.ewma(series, com=50)
+    #Series.ewm(ignore_na=False,min_periods=0,adjust=True,com=50).mean()
+    stdDev = pandas.stats.moments.ewmstd(series, com=50)
+
+    latest_expAverage = [a for a in expAverage][-1]
+    latest_stdDev = [a for a in stdDev][-1]
+    latest_elem = x[-1]
+
+    return abs(latest_elem - latest_expAverage) / latest_stdDev
+
+
+def mean_subtraction_cumulation(x):
+    series = pandas.Series(x)
+    series = series - series[0:len(series) - 1].mean()
+    stdDev = series[0:len(series) - 1].std()
+    expAverage = pandas.stats.moments.ewma(series, com=15)
+
+    return abs(x[-1]) / stdDev
+
+def histogram_bins(x):
+    series = scipy.array(x)
+    t = tail_avg(x)
+    bin_sizes, bin_edges = np.histogram(series)
+    for i,e in enumerate(bin_edges):
+        if t < e:
+            break
+    return float(bin_sizes[i-1])/float(len(x))
+
 
 
 def TSD(x):
@@ -86,14 +135,18 @@ def TSD(x):
     return result.trend, result.seasonal, result.resid
 
 def main():
-    t = np.random.randint(1, 20, 20)
+    print ALGORITHMS
+    t = np.random.randint(1, 20, 40)
+    t = np.append(t, np.random.randint(20, 90, 3))
     print t
     begin = 0
     end = begin + 10
     while end < len(t):
         s = t[begin:end]
         #print median_absolute_deviation(s)
-        print grubbs(s)
+        #print histogram_bins(s)
+        ensemble = [globals()[algorithm](s) for algorithm in ALGORITHMS]
+        print ensemble
         begin += 1
         end += 1
 
