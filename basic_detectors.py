@@ -7,6 +7,8 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from numpy.linalg import svd
 import pandas
 
+import sys
+
 from sklearn.ensemble import GradientBoostingClassifier
 
 ALGORITHMS = [
@@ -35,6 +37,11 @@ def weighted_MA(x, N):
 def EWMA(x, N):
     """ exponential weighted moving average """
     pass
+
+def TSD(x):
+    result = seasonal_decompose(x, model='additive', freq=1440)
+    return result.trend, result.seasonal, result.resid
+
 
 def tail_avg(x):
     """
@@ -117,7 +124,6 @@ def mean_subtraction_cumulation(x):
     series = pandas.Series(x)
     series = series - series[0:len(series) - 1].mean()
     stdDev = series[0:len(series) - 1].std()
-    expAverage = pandas.stats.moments.ewma(series, com=15)
 
     return abs(x[-1]) / stdDev
 
@@ -130,35 +136,8 @@ def histogram_bins(x):
             break
     return float(bin_sizes[i-1])/float(len(x))
 
-
-
-def TSD(x):
-    result = seasonal_decompose(x, model='additive', freq=1440)
-    return result.trend, result.seasonal, result.resid
-
-def main():
-    print ALGORITHMS
-    t = np.random.randint(1, 20, 40)
-    t = np.append(t, np.random.randint(20, 90, 3))
-    print t
-    begin = 0
-    end = begin + 10
-# data
-    X = []
-# label
-    Y = []
-    while end < len(t):
-        s = t[begin:end]
-        #print median_absolute_deviation(s)
-        #print histogram_bins(s)
-        ensemble = [globals()[algorithm](s) for algorithm in ALGORITHMS]
-        X.append(ensemble)
-        Y.append(np.random.randint(0,2))
-        print ensemble
-        begin += 1
-        end += 1
-
-    base_model = GradientBoostingClassifier()
+def train_model(X, Y):
+    model = GradientBoostingClassifier()
     #base_model = lgb.LGBMClassifier(objective='binary',
     #                         boosting_type='gbdt',
     #                         num_leaves=28,
@@ -167,7 +146,46 @@ def main():
     #                         bagging_freq=5,
     #                         n_estimators=30,
     #                         nthread=5)
-    base_model.fit(X, Y)
+    model.fit(X, Y)
+    return model
+
+def readinput():
+    filename = sys.argv[1]
+    in_data = []
+    out_data = []
+    for line in open(filename):
+        daytime, flow_in, flow_out = line.strip().split(",")
+        in_data.append(int(flow_in))
+        out_data.append(int(flow_out))
+
+    return in_data, out_data
+
+
+def detect_anomaly(t):
+    begin = 0
+    end = begin + 10
+    # data
+    X = []
+    # label
+    Y = []
+    while end < len(t):
+        s = t[begin:end]
+        x = [globals()[algorithm](s) for algorithm in ALGORITHMS]
+        print x
+        X.append(x)
+        Y.append(np.random.randint(0,2))
+        begin += 1
+        end += 1
+    train_model(X, Y)
+
+def main():
+    #print ALGORITHMS
+    #t = np.random.randint(1, 20, 40)
+    #t = np.append(t, np.random.randint(20, 90, 3))
+    #print t
+    in_data, out_data = readinput()
+    detect_anomaly(in_data)
+
 
 main()
 
